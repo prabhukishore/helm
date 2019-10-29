@@ -1,0 +1,37 @@
+#############################################################
+# This file contains settings that apply to the dev 'green' #
+# environment. It overrides defaults in the following       #
+# - env/dev.common.yaml                                     #
+# - vineya/values.yaml                                      #
+#############################################################
+
+# Global settings
+global:
+  color: green
+
+#####################
+# Lighthouse Server #
+#####################
+lighthouse-server:
+
+  # Docker Image/Tag
+  image:
+    tag: develop-1707417801017f655d8f202c6f284c9f84fd2313
+
+##################
+# Partner Server #
+##################
+partner-server:
+
+  # Docker Image/Tag
+  image:
+    tag: develop-048e0f2b65ed70c384f9857dd5c19786024a4fd9
+
+######################
+# Interpreter Server #
+######################
+interpreter-server:
+
+  # Docker Image/Tag
+  image:
+    tag: develop-7d6904c04dbb461aa3208a850772bb3768562f5e

@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "interpreter-server.fullname" . }}
+  labels:
+    app: {{ template "interpreter-server.name" . }}
+    chart: {{ template "interpreter-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.service.jobWebPort }}
+      targetPort: http-job-web
+      protocol: TCP
+      name: http-job-web
+    - port: {{ .Values.service.partnerWebPort }}
+      targetPort: partner-web
+      protocol: TCP
+      name: partner-web
+  selector:
+    app: {{ template "interpreter-server.name" . }}
+    release: {{ .Release.Name }}

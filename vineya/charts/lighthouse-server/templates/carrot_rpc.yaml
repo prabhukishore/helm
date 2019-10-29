@@ -1,0 +1,44 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "lighthouse-server.fullname" . }}-carrot-rpc
+  labels:
+    app: {{ template "lighthouse-server.name" . }}-carrot-rpc
+    chart: {{ template "lighthouse-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicas.rpc }}
+  affinity:
+    {{- include "lighthouse-server.affinity" . | indent 4}}
+  selector:
+    matchLabels:
+      app: {{ template "lighthouse-server.name" . }}-carrot-rpc
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "lighthouse-server.name" . }}-carrot-rpc
+        release: {{ .Release.Name }}
+        rabbitmq-client: "true"
+        lighthouse-worker: "true"
+    spec:
+      initContainers:
+        - name: wait-for-migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["bin/wait_to_migrate"]
+          {{ include "lighthouse-server.env" . | indent 10 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["bundle", "exec", "carrot_rpc"]
+        {{ include "lighthouse-server.env" . | indent 10 }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+        {{- include "lighthouse-redis-stunnel-container" . | indent 8 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

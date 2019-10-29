@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ template "partner-server.fullname" . }}-worker
+  labels:
+    app: {{ template "partner-server.fullname" . }}
+    chart: {{ template "partner-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  podSelector:
+    matchLabels:
+      release: {{ .Release.Name }}
+      partner-worker: "true"
+  ingress:
+    - ports:
+      - port: 9292

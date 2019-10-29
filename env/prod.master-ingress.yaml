@@ -1,0 +1,107 @@
+ingress:
+  enabled: true
+  target: blue
+  domain: govineya.com
+  partnerHosts: &partnerHosts
+    - csdhq
+    - testdomain
+    - aca
+    - accessll
+    - ahis
+    - aqi
+    - archive
+    - asl
+    - aslis
+    - azds
+    - caag4austin
+    - caag4houston
+    - clgtsolutions
+    - dacinterpreting
+    - davoservices
+    - dcara
+    - dhisnyc
+    - gracehearing
+    - his
+    - interpretthat
+    - listen
+    - lubbockdeaf
+    - mis
+    - nis
+    - perspectives
+    - s5s
+    - servicesource
+    - sharpeyed
+    - signingedge
+    - signsbyjewel
+    - slis
+    - slrsinc
+    - tlsservices
+    - truebizasl
+    - vis
+    - vitalsignsllc
+    - wiscorps
+partnerWebIngress:
+  enabled: true
+  target: blue
+  domain: govineya.com
+  annotations:
+    certmanager.k8s.io/issuer: letsencrypt-prod
+  partnerHosts: *partnerHosts
+
+nginx-ingress:
+  enabled: true
+  controller:
+    service:
+      annotations:
+        dns.alpha.kubernetes.io/external: |
+          grafana.govineya-prod.com,
+          lighthouse.govineya.com,
+          lighthouse.blue.govineya-prod.com,
+          lighthouse.green.govineya-prod.com,
+          interpreter.govineya.com,
+          interpreter.blue.govineya-prod.com,
+          interpreter.green.govineya-prod.com,
+          partner.govineya.com,
+          partner.blue.govineya-prod.com,
+          partner.green.govineya-prod.com,
+          csdhq.govineya.com,
+          csdhq.blue.govineya-prod.com,
+          csdhq.green.govineya-prod.com,
+          testdomain.govineya.com,
+          testdomain.blue.govineya-prod.com,
+          testdomain.green.govineya-prod.com,
+          aca.govineya.com,
+          accessll.govineya.com,
+          ahis.govineya.com,
+          aqi.govineya.com,
+          archive.govineya.com,
+          asl.govineya.com,
+          aslis.govineya.com,
+          azds.govineya.com,
+          caag4austin.govineya.com,
+          caag4houston.govineya.com,
+          clgtsolutions.govineya.com,
+          dacinterpreting.govineya.com,
+          davoservices.govineya.com,
+          dcara.govineya.com,
+          dhisnyc.govineya.com,
+          gracehearing.govineya.com,
+          his.govineya.com,
+          interpretthat.govineya.com,
+          listen.govineya.com,
+          lubbockdeaf.govineya.com,
+          mis.govineya.com,
+          nis.govineya.com,
+          perspectives.govineya.com,
+          s5s.govineya.com,
+          servicesource.govineya.com,
+          sharpeyed.govineya.com,
+          signingedge.govineya.com,
+          signsbyjewel.govineya.com,
+          slis.govineya.com,
+          slrsinc.govineya.com,
+          tlsservices.govineya.com,
+          truebizasl.govineya.com,
+          vis.govineya.com,
+          vitalsignsllc.govineya.com,
+          wiscorps.govineya.com

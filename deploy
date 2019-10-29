@@ -1,0 +1,730 @@
+#!/usr/bin/env bash
+
+OPTIONS=ft
+LONGOPTIONS=force,trace,skip-git-check
+
+test_getopt () {
+    local bin="$1"
+
+    "$bin" --test > /dev/null
+    if [[ $? -ne 4 ]]; then
+        error "I’m sorry, 'getopt --test' failed in this environment."
+        exit 1
+    fi
+}
+
+getopt_bin () {
+    local bin
+
+    bin=$(which getopt)
+    if [ "$(uname)" == "Darwin" ]; then
+        if brew list gnu-getopt > /dev/null; then
+            bin=$(brew list gnu-getopt | grep bin)
+        else
+            warning "You must install the gnu-getopt package from homebrew: brew install gnu-getopt"
+            exit 1
+        fi
+    fi
+
+    echo "$bin"
+}
+
+check_helm () {
+    if ! which helm > /dev/null; then
+        error "This script requires helm: https://docs.helm.sh/using_helm/#installing-helm"
+        exit 1
+    fi
+}
+
+check_helm_diff () {
+    helm_diff=$(helm plugin list | grep diff)
+    if [[ -z "$helm_diff" ]]; then
+        error "This script requires the helm diff plugin: https://github.com/databus23/helm-diff"
+        exit 1
+    fi
+}
+
+check_weave_encryption_enabled () {
+    local context="$1"
+
+    kubectl --context "$context" -n kube-system get ds weave-net -o yaml | grep 'name: WEAVE_PASSWORD' > /dev/null
+}
+
+check_weave_secret () {
+    local context="$1"
+
+    kubectl --context "$context" -n kube-system get secret weave-net-password > /dev/null
+}
+
+set_weave_secret () {
+    local context="$1"
+
+    kubectl --context "$context" create secret -n kube-system generic weave-net-password --from-literal=weave-password="$(env LC_CTYPE=C tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 16 | head -n 1 | xargs echo -n | base64)"
+}
+
+enable_weave_encryption () {
+    local context="$1"
+
+    kubectl --context "$context" -n kube-system get ds weave-net -o json | jq '.spec.template.spec.containers[0].env += [{"name": "WEAVE_PASSWORD", "valueFrom": { "secretKeyRef": { "name": "weave-net-password", "key": "weave-password" }}}]' | kubectl --context "$context" -n kube-system apply -f -
+}
+
+encrypt_weave () {
+    local context="$1"
+
+    if check_weave_secret "$context"; then
+      yellow "Weave secret already installed"
+    else
+      set_weave_secret "$context"
+      blue "Weave secret created"
+    fi
+
+    if check_weave_encryption_enabled "$context"; then
+      yellow "Weave encryption already enabled"
+    else
+      enable_weave_encryption "$context"
+      blue "Weave encryption enabled"
+    fi
+}
+
+parse_args () {
+  local getopt="$1"
+  shift
+  $getopt --options=$OPTIONS --longoptions=$LONGOPTIONS --name "$0" -- "$@" || exit 2
+}
+
+check_clean_git () {
+    if ! git diff-index --quiet HEAD --; then
+        error "Your repository contains uncommitted changes, please commit them first"
+        exit 1
+    fi
+}
+
+check_unpushed_commits () {
+    unpushed_commits=$(git log master --not --remotes)
+    if [[ -n "$unpushed_commits" ]]; then
+        error "Your repository contains unpushed changes, please push them first"
+        exit 1
+    fi
+}
+
+check_missing_commits () {
+    git fetch origin
+    missing_commits=$(git log HEAD..origin/master --oneline)
+    if [[ -n "$missing_commits" ]]; then
+        error "Your repository is missing commits from master, please pull/merge master"
+        exit 1
+    fi
+}
+
+red () {
+    echo -e "\\x1B[31m$1\\033[0m"
+}
+
+green () {
+    echo -e "\\x1B[32m$1\\033[0m"
+}
+
+yellow () {
+    echo -e "\\x1B[33m$1\\033[0m"
+}
+
+blue () {
+    echo -e "\\x1B[34m$1\\033[0m"
+}
+
+error () {
+    echo
+    >&2 red "$1"
+    echo
+}
+
+warning () {
+    echo
+    yellow "$1"
+    echo
+}
+
+color () {
+    case "$1" in
+        blue)
+            blue "blue"
+            ;;
+        green)
+            green "green"
+            ;;
+        *)
+            "$1"
+            ;;
+    esac
+}
+
+bold () {
+    echo -e "\\x1B[1m$1\\033[0m"
+}
+
+blink () {
+    echo -e "\\x1B[5m$1\\033[0m"
+}
+
+danger () {
+    echo -e "\\x1B[31m\\x1B[5m\\x1B[1m$1\\033[0m"
+}
+
+environment () {
+    case "$1" in
+        "prod")
+            danger "prod"
+            ;;
+        *)
+            echo "$1"
+            ;;
+    esac
+}
+
+confirm_changes () {
+    local changes
+    changes=$("$@")
+
+    if [ "$?" != "0" ]; then
+        error "Comparing changes failed, aborting."
+        return 1
+    fi
+
+    if [[ -z "$changes" ]]; then
+        warning "No changes detected, aborting."
+        return 1
+    fi
+
+    echo
+    yellow "Changes to Apply:"
+    echo
+    echo "$changes"
+    echo
+    read -r -p "Apply Change - Are you sure? [y/N] " response
+    if [[ "$response" =~ [yY] ]]; then
+        return 0
+    else
+        warning "Operation Aborted"
+        return 1
+    fi
+}
+
+domain_name () {
+    case "$1" in
+        "dev")
+            echo "govineya-dev.com"
+            ;;
+        "stage")
+            echo "govineya-staging.com"
+            ;;
+        "prod")
+            echo "govineya.com"
+            ;;
+        *)
+            echo "Programming error"
+            exit 3
+            ;;
+    esac
+}
+
+context_name () {
+    case "$1" in
+        "dev")
+            echo "govineya-dev.com"
+            ;;
+        "stage")
+            echo "govineya-staging.com"
+            ;;
+        "prod")
+            echo "govineya-prod.com"
+            ;;
+        *)
+            echo "Programming error"
+            exit 3
+            ;;
+    esac
+}
+
+live_color () {
+    local context="$1"
+    kubectl get svc master-lighthouse-server -o yaml | awk 'match($0, /release: vineya-(.*)/) { print substr( $0, RSTART+16, RLENGTH )}'
+}
+
+usage() {
+    echo "
+Usage: deploy.sh SUBCOMMAND ENVIRONMENT [CHART] [COLOR]
+
+Subcommands:
+
+  admin     Additional cluster admin commands
+  delete    Deletes a chart, use with care
+  install   Install the given chart in the specified environment/color
+  upgrade   Upgrade an already installed chart in the specified environment/color
+  switch    Switch the master ingress in a given environment to the specified color
+
+Environments:
+
+  dev     AWS Dev environment - mainly used for testing out environment changes
+  stage   AWS Stage environment - environment where next release is tested
+  prod    AWS Prod environment - production environment
+
+Admin Commands:
+  encrypt_weave   Sets up weave networking for encryption between nodes (because kops doesn't support this out of the box yet)
+  live            Prints out the current 'color' of the live environment
+  setup_search    Sets up search, requires a color as an argument
+
+Charts: (Charts are optional for the switch command)
+
+  cert-manager     This is the certificate manager that is used to grab letsencrypt TLS certs for the environment, it should only be installed once and likely won't require upgrades
+  kitt             The Kitt ops bot, it should only be installed in stage
+  master-ingress   This is the master ingress that routes traffic between applications and colors. It should only be installed once and likely won't be upgraded often
+  shared-services  This is the chart for shared services that apply across all environment/color deployments
+  vineya           This is the main Vineya application including all backend services
+
+Colors: (Color is optional when installing/upgrading the cert-manager or master-ingress charts)
+
+  blue
+  green
+"
+}
+
+_vineya_deploy_completion () {
+    readonly colors="blue green"
+    readonly environments="dev stage prod"
+    readonly charts="cert-manager kitt master-ingress shared-services vineya"
+    readonly subcommands="admin delete install upgrade switch"
+    readonly admin_commands="encrypt_weave live setup_search"
+    readonly switches="--force"
+
+    case "$1" in
+        "-"|"--")
+            echo "$switches"
+            ;;
+        admin)
+            if [[ "$2" =~ (dev|stage|prod) ]]; then
+                if [[ "$3" == "setup_search" ]]; then
+                    if [[ "$4" == "" ]]; then echo "$colors"; fi
+                else
+                    if [[ "$3" == "" ]]; then echo "$admin_commands"; fi
+                fi
+            else
+                echo "$environments"
+            fi
+            ;;
+        install|upgrade|delete)
+            if [[ "$2" == "dev" || "$2" == "stage" || "$2" == "prod" ]]; then
+                if [[ "$3" == "vineya" ]]; then
+                    if [[ "$4" == "" ]]; then echo "$colors"; fi
+                else
+                    if [[ "$3" == "" ]]; then echo "$charts"; fi
+                fi
+            else
+                echo "$environments"
+            fi
+            ;;
+        switch)
+            if [[ "$2" == "dev" || "$2" == "stage" || "$2" == "prod" ]]; then
+                echo "$colors"
+            else
+                echo "$environments"
+            fi
+            ;;
+        *)
+            echo "$subcommands"
+            ;;
+    esac
+}
+
+_bash_vineya_deploy_completion () {
+    COMPREPLY=()
+    local word="${COMP_WORDS[COMP_CWORD]}"
+    local completions
+
+    if [ "$COMP_CWORD" -eq 1 ]; then
+        mapfile -t COMPREPLY < <(compgen -W "$(_vineya_deploy_completion)" -- "$word")
+    else
+        local words=("${COMP_WORDS[@]}")
+        unset "words[0]"
+        unset "words[$COMP_CWORD]"
+        completions=$(_vineya_deploy_completion "${words[@]}")
+        mapfile -t COMPREPLY < <(compgen -W "$completions" -- "$word")
+    fi
+}
+
+_zsh_vineya_deploy_completion () {
+    local words completions
+    read -rcA words
+
+    if [ "${#words}" -eq 2 ]; then
+        completions="$(_vineya_deploy_completion)"
+    else
+        completions="$(_vineya_deploy_completion ${words[2,-2]})"
+    fi
+
+    reply=("${(ps: :)completions}")
+}
+
+main () {
+    local getopt
+
+    if [[ "$1" == "completion" && "$2" == "zsh" ]]; then
+        echo "
+if [[ ! -o interactive ]]; then
+    return
+fi
+"
+        declare -f _vineya_deploy_completion
+        declare -f _zsh_vineya_deploy_completion
+        echo "compctl -K _zsh_vineya_deploy_completion deploy"
+        exit 0
+    fi
+
+    if [[ "$1" == "completion" && "$2" == "bash" ]]; then
+        declare -f _vineya_deploy_completion
+        declare -f _bash_vineya_deploy_completion
+        echo "complete -F _bash_vineya_deploy_completion deploy"
+        exit 0
+    fi
+
+    check_helm
+    check_helm_diff
+
+    getopt=$(getopt_bin)
+
+    test_getopt "$getopt"
+
+    # read getopt’s output this way to handle the quoting right:
+    eval set -- "$(parse_args "$getopt" "$@")"
+
+    while true; do
+        case "$1" in
+            -f|--force)
+                force="true"
+                shift
+                ;;
+            -t|--trace)
+                set -x
+                shift
+                ;;
+            --skip-git-check)
+                skip_git_check="true"
+                shift
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                error "Unknown flag: $1"
+                usage
+                exit 3
+                ;;
+        esac
+    done
+
+    subcommand="$1"
+    case "$subcommand" in
+        admin)
+            subcommand="admin"
+            shift
+            ;;
+        delete)
+            subcommand="delete"
+            shift
+            ;;
+        install)
+            subcommand="install"
+            shift
+            ;;
+        upgrade)
+            subcommand="upgrade"
+            shift
+            ;;
+        switch)
+            subcommand="switch"
+            shift
+            ;;
+        "")
+            usage
+            exit 0
+            ;;
+        *)
+            error "Unknown subcommand $subcommand"
+            usage
+            exit 3
+            ;;
+    esac
+
+    environment="$1"
+    case "$environment" in
+        dev)
+            environment="dev"
+            shift
+            ;;
+        qa|staging|stage)
+            environment="stage"
+            shift
+            ;;
+        prod|production)
+            environment="prod"
+            shift
+            ;;
+        *)
+            error "Unknown Environment: $environment"
+            usage
+            exit 3
+            ;;
+    esac
+
+    if [[ "$subcommand" != "switch" && "$subcommand" != "admin" ]]; then
+        chart="$1"
+        case "$chart" in
+            cert-manager)
+                chart="cert-manager"
+                shift
+                ;;
+            kitt)
+                chart="kitt"
+                shift
+                ;;
+            master-ingress)
+                chart="master-ingress"
+                shift
+                ;;
+            shared-services)
+                chart="shared-services"
+                shift
+                ;;
+            vineya)
+                chart="vineya"
+                shift
+                ;;
+            *)
+                error "Unknown Chart: $chart"
+                usage
+                exit 3
+                ;;
+        esac
+    fi
+
+    if [ "$subcommand" == "admin" ]; then
+        admin_command="$1"
+        case "$admin_command" in
+            encrypt_weave)
+                admin_command="encrypt_weave"
+                shift
+                ;;
+            live)
+                admin_command="live"
+                shift
+                ;;
+            setup_search)
+                admin_command="setup_search"
+                shift
+                ;;
+            *)
+                error "Unknown admin command: $admin_command"
+                usage
+                exit 3
+                ;;
+        esac
+    fi
+
+    if [[ "$chart" != "cert-manager" && "$chart" != "kitt" && "$chart" != "shared-services" && "$chart" != "master-ingress" && "$admin_command" != "encrypt_weave" && "$admin_command" != "live" ]]; then
+        color="$1"
+        case "$color" in
+            blue)
+                color="blue"
+                shift
+                ;;
+            green)
+                color="green"
+                shift
+                ;;
+            *)
+                error "Unknown color: $color"
+                usage
+                exit 3
+                ;;
+        esac
+    fi
+
+    domain=$(domain_name "$environment")
+    context=$(context_name "$environment")
+
+    if [ "$skip_git_check" != "true" ]; then
+        check_clean_git
+        check_missing_commits
+        check_unpushed_commits
+    fi
+
+    case "$subcommand" in
+        admin)
+            red "########################################"
+            echo "Executing Admin - ${admin_command}"
+            red "########################################"
+
+            case "$admin_command" in
+                encrypt_weave)
+                    encrypt_weave "${context}"
+                    ;;
+                live)
+                    echo "$(color $(live_color "${context}"))"
+                    ;;
+                setup_search)
+                    #TODO: Figure out current environment - error if trying to deploy to current active environment
+
+                    read -r -p "Setup Search for $(color "$color") - Are you _REALLY_ sure? [y/N] " response
+                    if [[ "$response" =~ [yY] ]]; then
+                        warning "Here we go..."
+                        echo
+
+                        kubectl exec -ti $(kubectl get pod -l "release=vineya-${color},app=interpreter-server" -o jsonpath='{.items[0].metadata.name}') -c interpreter-server -- bin/load_env mix search.indices delete_version
+                        kubectl exec -ti $(kubectl get pod -l "release=vineya-${color},app=interpreter-server" -o jsonpath='{.items[0].metadata.name}') -c interpreter-server -- bin/load_env mix search.setup
+                    else
+                        warning "Operation Aborted"
+                        exit 1
+                    fi
+                    ;;
+            esac
+            ;;
+        delete)
+            red "########################################"
+            if [ -z "${color}" ]; then
+                echo "Deleteing $chart in $(environment "$environment"):"
+            else
+                echo "Deleteing $chart in $(environment "$environment") - $(color "$color"):"
+            fi
+            red "########################################"
+
+            #TODO: Figure out current environment - error if trying to deploy to current active environment
+
+            read -r -p "Delete - Are you _REALLY_ sure? [y/N] " response
+            if [[ "$response" =~ [yY] ]]; then
+                warning "Here we go..."
+                echo
+            else
+                warning "Operation Aborted"
+                exit 1
+            fi
+
+            case "$chart" in
+                cert-manager)
+                    error "Deleting cert-manager is not supported by this script"
+                    exit 1
+                    ;;
+                kitt)
+                    helm --kube-context "${context}" delete --purge "kitt"
+                    warning "Deleting kitt from ${context} done."
+                    ;;
+                master-ingress)
+                    error "Deleting master-ingress is not supported by this script. NEVER DELETE THE master-ingress unless you _REALLY_ know what you are doing and discuss it with the team"
+                    exit 1
+                    ;;
+                vineya)
+                    helm --kube-context "${context}" delete --purge "vineya-${color}"
+                    warning "Deleting vineya-${color} from ${context} done."
+                    ;;
+            esac
+            ;;
+        install)
+            red "########################################"
+            if [ -z "${color}" ]; then
+                echo "Installing $chart to $(environment "$environment"):"
+            else
+                echo "Installing $chart to $(environment "$environment") - $(color "$color"):"
+            fi
+            red "########################################"
+
+            #TODO: Figure out current environment - error if trying to deploy to current active environment
+
+            case "$chart" in
+                cert-manager)
+                    helm --kube-context "${context}" install --timeout 1200 -n "cert-manager" --namespace "shared-services" cert-manager/
+                    ;;
+                kitt)
+                    case "$environment" in
+                        dev|prod)
+                            error "Kitt may not be installed in $environment. It can only be installed in stage."
+                            exit 1
+                            ;;
+                        stage)
+                            helm --kube-context "${context}" install --timeout 1200 -n "kitt" -f "env/kitt.yaml" kitt/
+                            ;;
+                        esac
+                    ;;
+                master-ingress)
+                    helm --kube-context "${context}" install --timeout 1200 -n "master-ingress" -f "env/${environment}.master-ingress.yaml" --set "ingress.domain=${domain}" master-ingress/
+                    ;;
+                shared-services)
+                    helm --kube-context "${context}" install --timeout 1200 -n "shared-services" --namespace "shared-services" -f "env/${environment}.shared-services.yaml" shared-services/
+                    ;;
+                vineya)
+                    helm --kube-context "${context}" install --timeout 1200 -n "vineya-${color}" -f "vineya/values.yaml" -f "env/${environment}.common.yaml" -f "env/${environment}.${color}.yaml" vineya/
+                    ;;
+            esac
+            ;;
+        upgrade)
+            red "########################################"
+            if [ -z "${color}" ]; then
+                echo -e "Upgrading $chart in $(environment "$environment")"
+            else
+                echo -e "Upgrading $chart in $(environment "$environment") to $(color "$color")"
+            fi
+            red "########################################"
+
+            case "$chart" in
+                cert-manager)
+                    confirm_changes helm --kube-context "${context}" diff "cert-manager" cert-manager/ || exit $?
+                    helm --kube-context "${context}" upgrade "cert-manager" --namespace "shared-services" cert-manager/ --timeout 1200
+                    ;;
+                kitt)
+                    confirm_changes helm --kube-context "${context}" diff "kitt" kitt/ -f "env/kitt.yaml" || exit $?
+                    helm --kube-context "${context}" upgrade "kitt" kitt/ -f "env/kitt.yaml" --timeout 1200
+                    ;;
+                master-ingress)
+                    active_color="$(live_color "${context}")"
+
+                    confirm_changes helm --kube-context "${context}" diff "master-ingress" master-ingress/ -f "env/${environment}.master-ingress.yaml" --set "ingress.domain=${domain},ingress.target=${active_color}" || exit $?
+                    helm --kube-context "${context}" upgrade "master-ingress" master-ingress/ --timeout 1200 -f "env/${environment}.master-ingress.yaml" --set "ingress.domain=${domain},ingress.target=${active_color}"
+                    ;;
+                shared-services)
+                    confirm_changes helm --kube-context "${context}" diff "shared-services" shared-services/ -f "env/${environment}.shared-services.yaml" || exit $?
+                    helm --kube-context "${context}" upgrade "shared-services" --namespace "shared-services" shared-services/ --timeout 1200 -f "env/${environment}.shared-services.yaml"
+                    ;;
+                vineya)
+                    active_color="$(live_color "${context}")"
+
+                    if [[ "$color" == "$active_color" && "$force" != true ]]; then
+                        error "You cannot upgrade $color it is currently live"
+                        exit 1
+                    fi
+                    confirm_changes helm --kube-context "${context}" diff "vineya-${color}" vineya/ -f "vineya/values.yaml" -f "env/${environment}.common.yaml" -f "env/${environment}.${color}.yaml" || exit $?
+                    helm --kube-context "${context}" upgrade "vineya-${color}" vineya/ --timeout 1200 -i -f "vineya/values.yaml" -f "env/${environment}.common.yaml" -f "env/${environment}.${color}.yaml"
+                    ;;
+            esac
+
+            ;;
+        switch)
+            red "########################################"
+            echo -e "Switching $(environment "$environment") to $(color "$color")"
+            red "########################################"
+
+            #TODO: Make sure "master-ingress" is actually deployed in environment
+
+            active_color="$(live_color "${context}")"
+
+            if [[ "$color" == "$active_color" && "$force" != true ]]; then
+                error "You cannot switch to $color it is already live"
+                exit 1
+            fi
+
+            confirm_changes helm --kube-context "${context}" diff "master-ingress" master-ingress/ -f "env/${environment}.master-ingress.yaml" --set "ingress.domain=${domain},ingress.target=${color}" || exit $?
+            helm --kube-context "${context}" upgrade "master-ingress" master-ingress/ -f "env/${environment}.master-ingress.yaml" --set "ingress.domain=${domain},ingress.target=${color}" --wait
+            ;;
+    esac
+
+    exit 0
+}
+
+main "$@"

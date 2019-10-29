@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "shared-services.fullname" . }}-grafana-kubernetes-dashboard
+  labels:
+    app: {{ template "shared-services.name" . }}
+    chart: {{ template "shared-services.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    grafana_dashboard: "true"
+data:
+  k8s-dashboard.json: |
+{{ .Files.Get "files/k8s-dashboard.json" | indent 8 }}

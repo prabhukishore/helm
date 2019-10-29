@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "interpreter-server.fullname" . -}}
+{{- $ingressPath := .Values.ingress.path -}}
+{{- $target := .Values.global.color -}}
+{{- $domain := .Values.global.domain -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    app: {{ template "interpreter-server.name" . }}
+    chart: {{ template "interpreter-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+{{- with .Values.ingress.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+  tls:
+    - secretName: {{ $fullName }}-tls
+      hosts:
+      {{- range .Values.ingress.hosts }}
+        - {{ . }}.{{ $target }}.{{ $domain }}
+      {{- end }}
+  rules:
+  {{- range .Values.ingress.hosts }}
+    - host: {{ . }}.{{ $target }}.{{ $domain }}
+      http:
+        paths:
+          - path: {{ $ingressPath }}
+            backend:
+              serviceName: {{ $fullName }}
+              servicePort: http
+  {{- end }}
+{{- end }}

@@ -1,0 +1,95 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "rabbitmq.fullname" . }}
+  labels:
+    app: {{ template "rabbitmq.fullname" . }}
+    chart: {{ template "rabbitmq.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  template:
+    metadata:
+      labels:
+        app: {{ template "rabbitmq.fullname" . }}
+        release: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9419'
+    spec:
+{{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      {{- end }}
+      containers:
+      - name: exporter
+        image: "kbudde/rabbitmq-exporter"
+        imagePullPolicy: "Always"
+        env: 
+        - name: RABBIT_CAPABILITIES
+          value: bert,no_sort
+        - name: PUBLISH_PORT
+          value: "9419"
+        ports:
+        - name: scrape
+          containerPort: 9149
+      - name: {{ template "rabbitmq.fullname" . }}
+        image: "{{ .Values.image }}"
+        imagePullPolicy: {{ default "" .Values.imagePullPolicy | quote }}
+        env:
+        - name: RABBITMQ_ERL_COOKIE
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "rabbitmq.fullname" . }}
+              key: rabbitmq-erlang-cookie
+        - name: RABBITMQ_NODE_PORT_NUMBER
+          value: {{ default "5672" .Values.rabbitmqNodePort | quote }}
+        - name: RABBITMQ_NODE_TYPE
+          value: {{ default "stats" .Values.rabbitmqNodeType | quote }}
+        - name: RABBITMQ_NODE_NAME
+          value: {{ printf "%s@%s" (default "rabbit" .Values.rabbitmqNodeName) "localhost" | quote }}
+        - name: RABBITMQ_CLUSTER_NODE_NAME
+          value: {{ default "" .Values.rabbitmqClusterNodeName | quote }}
+        - name: RABBITMQ_VHOST
+          value: {{ default "/" .Values.rabbitmqVhost | quote }}
+        - name: RABBITMQ_MANAGER_PORT_NUMBER
+          value: {{ default "15672" .Values.rabbitmqManagerPort | quote }}
+        - name: RABBITMQ_DISK_FREE_LIMIT
+          value: {{ default "\"8GiB\"" .Values.rabbitmqDiskFreeLimit | quote }}
+        - name: RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS
+          value: -rabbit loopback_users []
+        ports:
+        - name: epmd
+          containerPort: 4369
+        - name: amqp
+          containerPort: {{ default "5672" .Values.rabbitmqNodePort }}
+        - name: dist
+          containerPort: {{ default "5672" .Values.rabbitmqNodePort | add 20000 }}
+        - name: stats
+          containerPort: {{ default "15672" .Values.rabbitmqManagerPort }}
+        livenessProbe:
+          exec:
+            command:
+            - rabbitmqctl
+            - status
+          initialDelaySeconds: 120
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+            - rabbitmqctl
+            - status
+          initialDelaySeconds: 10
+          timeoutSeconds: 3
+          periodSeconds: 5
+        resources:
+{{ toYaml .Values.resources | indent 10 }}

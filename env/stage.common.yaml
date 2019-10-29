@@ -1,0 +1,74 @@
+######################################################
+# This file overrides defaults in vineya/values.yaml #
+######################################################
+
+# Global settings
+global:
+  publicDomain: govineya-staging.com
+  domain: govineya-staging.com
+
+  # Settings for redis-tunnel
+  redis:
+    host: master.redis-stage.tlhpsx.use1.cache.amazonaws.com
+    port: 6379
+
+#####################
+# Lighthouse Server #
+#####################
+lighthouse-server:
+  # RAILS_ENV
+  railsEnv: "qa"
+  # Ejson file to use
+  ejsonEnv: "staging"
+
+  # How many copies of each service
+  replicas:
+    web: 1
+    sidekiq: 1
+    rpc: 1
+
+##################
+# Partner Server #
+##################
+partner-server:
+  # RAILS_ENV
+  railsEnv: "qa"
+  # Ejson file to use
+  ejsonEnv: "staging"
+
+  # Subdomains for Partner
+  ingress:
+    hosts: &partnerHosts
+      - csdhq
+      - partner-alpha
+      - partner-beta
+      - partner-delta
+      - partner-gamma
+      - uatagency
+
+  # Health check settings
+  healthCheck:
+    subdomain: partner
+
+  # How many copies of each service
+  replicas:
+    web: 1
+    sidekiq: 1
+    rpc: 2
+
+######################
+# Interpreter Server #
+######################
+interpreter-server:
+  # MIX_ENV
+  mixEnv: "qa"
+  # Ejson file to use
+  ejsonEnv: "staging"
+
+  # Subdomains for Partner-Web OTP
+  partnerWebIngress:
+    hosts:
+      *partnerHosts
+
+  # How many copies of Interpreter
+  replicas: 1

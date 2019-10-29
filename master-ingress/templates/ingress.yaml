@@ -1,0 +1,62 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "master-ingress.fullname" . -}}
+{{- $domain := .Values.ingress.domain -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    app: {{ template "master-ingress.name" . }}
+    chart: {{ template "master-ingress.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+{{- with .Values.ingress.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+  tls:
+    - secretName: lighthouse-server-master-tls
+      hosts:
+        - lighthouse.{{ $domain }}
+    - secretName: interpreter-server-master-tls
+      hosts:
+        - interpreter.{{ $domain }}
+    - secretName: partner-server-master-tls
+      hosts:
+        - partner.{{ $domain }}
+        {{- range .Values.ingress.partnerHosts }}
+        - {{ . }}.{{ $domain }}
+        {{- end }}
+  rules:
+    - host: lighthouse.{{ $domain }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: master-lighthouse-server
+              servicePort: http
+    - host: interpreter.{{ $domain }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: master-interpreter-server
+              servicePort: http
+    - host: partner.{{ $domain }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: master-partner-server
+              servicePort: http
+  {{- range .Values.ingress.partnerHosts }}
+    - host: {{ . }}.{{ $domain }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: master-partner-server
+              servicePort: http
+  {{- end }}
+{{- end }}

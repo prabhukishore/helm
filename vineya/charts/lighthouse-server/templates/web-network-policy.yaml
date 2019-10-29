@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ template "lighthouse-server.fullname" . }}-web
+  labels:
+    app: {{ template "lighthouse-server.fullname" . }}
+    chart: {{ template "lighthouse-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ template "lighthouse-server.name" . }}-web
+      release: {{ .Release.Name }}
+  ingress:
+    - ports:
+      - port: {{ .Values.service.port }}

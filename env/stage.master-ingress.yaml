@@ -1,0 +1,60 @@
+ingress:
+  enabled: true
+  target: blue
+  domain: govineya-staging.com
+  annotations:
+    certmanager.k8s.io/issuer: letsencrypt-prod
+  partnerHosts: &partnerHosts
+    - partner-alpha
+    - partner-beta
+    - partner-delta
+    - partner-gamma
+    - techjini
+    - csdhq
+    - uatagency
+partnerWebIngress:
+  enabled: true
+  target: blue
+  domain: govineya-staging.com
+  annotations:
+    certmanager.k8s.io/issuer: letsencrypt-prod
+  partnerHosts:
+    *partnerHosts
+
+nginx-ingress:
+  enabled: true
+  controller:
+    service:
+      annotations:
+        dns.alpha.kubernetes.io/external: |
+          grafana.govineya-staging.com,
+          lighthouse.govineya-staging.com,
+          lighthouse.blue.govineya-staging.com,
+          lighthouse.green.govineya-staging.com,
+          interpreter.govineya-staging.com,
+          interpreter.blue.govineya-staging.com,
+          interpreter.green.govineya-staging.com,
+          partner.govineya-staging.com,
+          partner.blue.govineya-staging.com,
+          partner.green.govineya-staging.com,
+          csdhq.govineya-staging.com,
+          csdhq.blue.govineya-staging.com,
+          csdhq.green.govineya-staging.com,
+          partner-alpha.govineya-staging.com,
+          partner-alpha.blue.govineya-staging.com,
+          partner-alpha.green.govineya-staging.com,
+          partner-beta.govineya-staging.com,
+          partner-beta.blue.govineya-staging.com,
+          partner-beta.green.govineya-staging.com,
+          partner-delta.govineya-staging.com,
+          partner-delta.blue.govineya-staging.com,
+          partner-delta.green.govineya-staging.com,
+          partner-gamma.govineya-staging.com,
+          partner-gamma.blue.govineya-staging.com,
+          partner-gamma.green.govineya-staging.com,
+          techjini.govineya-staging.com,
+          techjini.blue.govineya-staging.com,
+          techjini.green.govineya-staging.com,
+          uatagency.govineya-staging.com,
+          uatagency.blue.govineya-staging.com,
+          uatagency.green.govineya-staging.com

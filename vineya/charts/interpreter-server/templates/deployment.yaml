@@ -1,0 +1,61 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "interpreter-server.fullname" . }}
+  labels:
+    app: {{ template "interpreter-server.name" . }}
+    chart: {{ template "interpreter-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicas }}
+  affinity:
+    {{- include "interpreter-server.affinity" . | indent 4}}
+  selector:
+    matchLabels:
+      app: {{ template "interpreter-server.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "interpreter-server.name" . }}
+        release: {{ .Release.Name }}
+        rabbitmq-client: "true"
+    spec:
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["mix", "ecto.migrate"]
+          {{ include "interpreter-server.env" . | indent 10 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["elixir", "--name", "interpreter@127.0.0.1", "--cookie", "{{ .Values.erlangCookie }}", "-S", "mix", "phoenix.server"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: http-job-web
+              containerPort: {{ .Values.service.jobWebPort }}
+              protocol: TCP
+            - name: partner-web
+              containerPort: {{ .Values.service.partnerWebPort }}
+              protocol: TCP
+          {{- if .Values.healthCheck.enabled }}
+          livenessProbe:
+            initialDelaySeconds: 90
+            httpGet:
+              path: /
+              port: http
+              scheme: HTTP
+          {{- end -}}
+        {{ include "interpreter-server.env" . | indent 10 }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+        {{- include "interpreter-redis-stunnel-container" . | indent 8 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

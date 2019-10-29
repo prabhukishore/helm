@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ template "interpreter-server.fullname" . }}
+  labels:
+    app: {{ template "interpreter-server.fullname" . }}
+    chart: {{ template "interpreter-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ template "interpreter-server.name" . }}
+      release: {{ .Release.Name }}
+  ingress:
+    - ports:
+      - port: {{ .Values.service.port }}
+      - port: {{ .Values.service.jobWebPort }}
+      - port: {{ .Values.service.partnerWebPort }}

@@ -1,0 +1,74 @@
+######################################################
+# This file overrides defaults in vineya/values.yaml #
+######################################################
+
+# Global settings
+global:
+  publicDomain: govineya.com
+  domain: govineya-prod.com
+
+  # Settings for redis-tunnel
+  redis:
+    host: master.redis-prod.mebhx4.use1.cache.amazonaws.com
+    port: 6379
+
+#####################
+# Lighthouse Server #
+#####################
+lighthouse-server:
+  # RAILS_ENV
+  railsEnv: "production"
+  # Ejson file to use
+  ejsonEnv: "production"
+
+  healthCheck:
+    secret: 649746d7dc706a42c09f1e5cc63b6bf2dfd6e31b558a27e82c564549755c8bad
+
+  # How many copies of each service
+  replicas:
+    web: 1
+    sidekiq: 1
+    rpc: 1
+
+##################
+# Partner Server #
+##################
+partner-server:
+  # RAILS_ENV
+  railsEnv: "production"
+  # Ejson file to use
+  ejsonEnv: "production"
+
+  # Subdomains for Partner
+  ingress:
+    hosts: &partnerHosts
+      - csdhq
+      - testdomain
+
+  # Health check settings
+  healthCheck:
+    subdomain: partner
+    secret: 959db631c4bf2063c03f6861b36904e932aff6d595681def718724b36d04ff93
+
+  # How many copies of each service
+  replicas:
+    web: 1
+    sidekiq: 1
+    rpc: 2
+
+######################
+# Interpreter Server #
+######################
+interpreter-server:
+  # MIX_ENV
+  mixEnv: "prod"
+  # Ejson file to use
+  ejsonEnv: "production"
+
+  # Subdomains for Partner-Web OTP
+  partnerWebIngress:
+    hosts:
+      *partnerHosts
+
+  # How many copies of Interpreter
+  replicas: 1

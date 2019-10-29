@@ -1,0 +1,10 @@
+name: rabbitmq
+version: 0.0.1
+appVersion: 3.7.3
+description: Open source message broker software that implements the Advanced Message Queuing Protocol (AMQP)
+keywords:
+- rabbitmq
+- message queue
+- AMQP
+home: https://www.rabbitmq.com
+engine: gotpl

@@ -1,0 +1,18 @@
+dependencies:
+- name: prometheus
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  version: 6.8.0
+- name: prometheus-cloudwatch-exporter
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  version: 0.2.0
+- name: grafana
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  version: 1.12.0
+- name: kube2iam
+  repository: https://kubernetes-charts.storage.googleapis.com/
+  version: 0.9.0
+- name: fluentd-cloudwatch
+  repository: http://storage.googleapis.com/kubernetes-charts-incubator
+  version: 0.5.0
+digest: sha256:b76c87de458c0372ec95154c5dc29b3a7d084535b97f191149ae683f7b62c04d
+generated: 2018-09-28T09:30:38.505568-05:00

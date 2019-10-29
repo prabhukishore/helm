@@ -1,0 +1,55 @@
+ingress:
+  enabled: true
+  target: blue
+  domain: govineya.local
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: 25m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: 180s
+    nginx.ingress.kubernetes.io/server-snippet: |
+      keepalive_timeout 180s;
+
+      add_header 'Access-Control-Allow-Origin' '$http_origin';
+      add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+      add_header 'Access-Control-Allow-Headers' 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Accept,Authorization';
+
+      if ($request_method = 'OPTIONS') {
+          return 204;
+      }
+
+  path: /
+  partnerHosts: []
+
+partnerWebIngress:
+  enabled: true
+  path: /api/v2/interpreter-connections
+  target: blue
+  domain: govineya.local
+  partnerHosts: []
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: 25m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: 180s
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      set $forwarded_url $scheme://$host/api/v2/interpreter-connections;
+
+      rewrite ^/api/v2/interpreter-connections(.*)$ /internal/interpreter-connections$1 break;
+
+      proxy_set_header X-Forwarded-Url $forwarded_url;
+
+nginx-ingress:
+  enabled: true
+  service:
+    type: LoadBalancer
+  controller:
+    config:
+      enable-vts-status: "true"
+    service:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '10254'
+        dns.alpha.kubernetes.io/external: ""
+    stats:
+      enabled: false

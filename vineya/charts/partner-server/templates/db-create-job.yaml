@@ -1,0 +1,27 @@
+{{- if or .Values.postgresql.enabled .Values.jobs.createDB -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "partner-server.fullname" . }}-db-create
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-2"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ template "partner-server.name" . }}-db-create
+      labels:
+        app: {{ template "partner-server.name" . }}-db-create
+        release: {{ .Release.Name }}
+        rabbitmq-client: "true"
+        partner-worker: "true"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: {{ .Chart.Name }}-db-create
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          args: ["bundle", "exec", "rake", "db:create", "db:schema:load"]
+          {{ include "partner-server.env" . | indent 10 }}
+        {{- include "partner-redis-stunnel-container" . | indent 8 }}
+{{- end -}}

@@ -1,0 +1,65 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "partner-server.fullname" . }}-web
+  labels:
+    app: {{ template "partner-server.name" . }}-web
+    chart: {{ template "partner-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicas.web }}
+  affinity:
+    {{- include "partner-server.affinity" . | indent 4}}
+  selector:
+    matchLabels:
+      app: {{ template "partner-server.name" . }}-web
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "partner-server.name" . }}-web
+        release: {{ .Release.Name }}
+        rabbitmq-client: "true"
+    spec:
+      initContainers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["bundle", "exec", "rake", "db:migrate"]
+          {{ include "partner-server.env" . | indent 10 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- if .Values.healthCheck.enabled }}
+          livenessProbe:
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            httpGet:
+              path: {{ .Values.healthCheck.path }}
+              port: http
+              scheme: HTTP
+              httpHeaders:
+                - name: X-Forwarded-Proto
+                  value: https
+                - name: Host
+                  value: {{ .Values.healthCheck.subdomain }}.{{ .Values.global.domain }}
+              {{- if and .Values.healthCheck.headerName .Values.healthCheck.secret }}
+                - name: {{ .Values.healthCheck.headerName }}
+                  value: {{ .Values.healthCheck.secret }}
+              {{- end -}}
+          {{- end -}}
+          {{ include "partner-server.env" . | indent 10 }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+        {{- include "partner-redis-stunnel-container" . | indent 8 }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

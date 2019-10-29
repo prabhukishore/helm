@@ -1,0 +1,27 @@
+{{- if or .Values.postgresql.enabled .Values.jobs.seedDB -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "interpreter-server.fullname" . }}-seed
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ template "interpreter-server.name" . }}-seed
+      labels:
+        app: {{ template "interpreter-server.name" . }}-seed
+        release: {{ .Release.Name }}
+        rabbitmq-client: "true"
+    spec:
+      restartPolicy: Never
+      containers:
+        {{- include "interpreter-redis-stunnel-container" . | indent 8 }}
+        - name: {{ .Chart.Name }}-seed
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          workingDir: /code/apps/interpreter_server_web
+          args: ["sh", "-c", "mix run /code/apps/interpreter/priv/repo/seeds.exs; mix run /code/apps/interpreter/priv/repo/dev_seeds.exs"]
+          {{ include "interpreter-server.env" . | indent 10 }}
+{{- end -}}

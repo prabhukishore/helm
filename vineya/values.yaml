@@ -1,0 +1,141 @@
+# Default values for vineya.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# RabbitMQ settings
+#  We deploy a separate instance per 'color'
+rabbitmq:
+  enabled: true
+  rabbitmqUsername: "guest"
+  rabbitmqPassword: "guest"
+
+# Redis deployed to the cluster
+redis:
+  enabled: false
+
+# Elasticsearch deployed to the cluster
+elasticsearch:
+  enabled: false
+
+# Postgres deployed to the cluster
+postgresql:
+  enabled: false
+
+#####################
+# Lighthouse Server #
+#####################
+lighthouse-server:
+  enabled: true
+
+  # Helm Deploy Hook Jobs
+  jobs:
+    fetchFrontend: false
+    createDB: false
+    seedDB: false
+
+  # Kubernetes Service Config
+  service:
+    port: 8080
+
+  # Deployment Image Settings
+  image:
+    repository: 504979392477.dkr.ecr.us-east-1.amazonaws.com/lighthouse-server
+
+  # Postgres Settings to Set in Lighthouse
+  postgresql:
+    enabled: false
+
+  # Redis Settings to Set in Lighthouse
+  redis:
+    enabled: false
+
+  # Elasticsearch Settings to Set in Lighthouse
+  elasticsearch:
+    enabled: false
+
+  # RabbitMQ Settings to Set in Lighthouse
+  rabbitmq:
+    enabled: true
+    rabbitmqUsername: "guest"
+    rabbitmqPassword: "guest"
+
+##################
+# Partner Server #
+##################
+partner-server:
+  enabled: true
+
+  # Helm Deploy Hook Jobs
+  jobs:
+    fetchFrontend: false
+    createDB: false
+    seedDB: false
+
+  # Kubernetes Service Config
+  service:
+    port: 8080
+
+  # Deployment Image Settings
+  image:
+    repository: 504979392477.dkr.ecr.us-east-1.amazonaws.com/partner-server
+
+  # Postgres Settings to Set in Partner
+  postgresql:
+    enabled: false
+
+  # Redis Settings to Set in Partner
+  redis:
+    enabled: false
+
+  # Elasticsearch Settings to Set in Partner
+  elasticsearch:
+    enabled: false
+
+  # RabbitMQ Settings to Set in Partner
+  rabbitmq:
+    enabled: true
+    rabbitmqUsername: "guest"
+    rabbitmqPassword: "guest"
+
+interpreter-server:
+  enabled: true
+
+  # Helm Deploy Hook Jobs
+  jobs:
+    fetchFrontend: false
+    createDB: false
+    seedDB: false
+
+  # Kubernetes Service Config
+  service:
+    port: 8080
+    jobWebPort: 9000
+    partnerWebPort: 9001
+
+  # Health Check Settings
+  healthCheck:
+    enabled: false
+
+  erlangCookie: cookie-monster
+
+  # Deployment Image settings
+  image:
+    repository: 504979392477.dkr.ecr.us-east-1.amazonaws.com/interpreter-server
+
+  # Postgres Settings to Set in Interpreter
+  postgresql:
+    enabled: false
+
+  # Redis Settings to Set in Interpreter
+  redis:
+    enabled: false
+
+  # Elasticsearch Settings to Set in Interpreter
+  elasticsearch:
+    enabled: false
+
+  # RabbitMQ Settings to Set in Interpreter
+  rabbitmq:
+    enabled: true
+    rabbitmqUsername: "guest"
+    rabbitmqPassword: "guest"

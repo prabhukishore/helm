@@ -1,0 +1,36 @@
+{{- if .Values.partnerWebIngress.enabled -}}
+{{- $fullName := include "interpreter-server.fullname" . -}}
+{{- $ingressPath := .Values.partnerWebIngress.path -}}
+{{- $target := .Values.global.color -}}
+{{- $domain := .Values.global.domain -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}-partner-web
+  labels:
+    app: {{ template "interpreter-server.name" . }}-partner-web
+    chart: {{ template "interpreter-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+{{- with .Values.partnerWebIngress.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+  tls:
+    - secretName: {{ $fullName }}-partner-web-tls
+      hosts:
+      {{- range .Values.partnerWebIngress.hosts }}
+        - {{ . }}.{{ $target }}.{{ $domain }}
+      {{- end }}
+  rules:
+  {{- range .Values.partnerWebIngress.hosts }}
+    - host: {{ . }}.{{ $target }}.{{ $domain }}
+      http:
+        paths:
+          - path: {{ $ingressPath }}
+            backend:
+              serviceName: {{ $fullName }}
+              servicePort: partner-web
+  {{- end }}
+{{- end }}

@@ -1,0 +1,56 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "lighthouse-server.fullname" . }}-sidekiq
+  labels:
+    app: {{ template "lighthouse-server.name" . }}-sidekiq
+    chart: {{ template "lighthouse-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicas.sidekiq }}
+  affinity:
+    {{- include "lighthouse-server.affinity" . | indent 4}}
+  selector:
+    matchLabels:
+      app: {{ template "lighthouse-server.name" . }}-sidekiq
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "lighthouse-server.name" . }}-sidekiq
+        release: {{ .Release.Name }}
+        rabbitmq-client: "true"
+        lighthouse-worker: "true"
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9292'
+    spec:
+      initContainers:
+        - name: wait-for-migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["bin/wait_to_migrate"]
+          {{ include "lighthouse-server.env" . | indent 10 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+        {{ include "lighthouse-server.env" . | indent 10 }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+        {{- include "lighthouse-redis-stunnel-container" . | indent 8 }}
+        - name: {{ .Chart.Name }}-prometheus-exporter
+          image: csd1/prometheus-sidekiq-exporter:latest
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          resources:
+            requests:
+              cpu: 20m
+          env:
+            - name: REDIS_URL
+              value: "redis://localhost:6379/0"
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

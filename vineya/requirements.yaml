@@ -1,0 +1,39 @@
+dependencies:
+  - name: postgresql
+    version: 0.8.7
+    repository: https://kubernetes-charts.storage.googleapis.com/
+    condition: postgresql.enabled
+    tags:
+      - postgresql
+  - name: elasticsearch
+    version: 0.4.7
+    repository: http://storage.googleapis.com/kubernetes-charts-incubator
+    condition: elasticsearch.enabled
+    tags:
+      - elasticsearch
+  - name: redis
+    version: 1.1.8
+    repository: https://kubernetes-charts.storage.googleapis.com/
+    condition: redis.enabled
+    tags:
+      - redis
+  - name: rabbitmq
+    version: 0.0.1
+    condition: rabbitmq.enabled
+    tags:
+      - rabbitmq
+  - name: lighthouse-server
+    version: 0.1.0
+    condition: lighthouse-server.enabled
+    tags:
+      - lighthouse-server
+  - name: partner-server
+    version: 0.1.0
+    condition: partner-server.enabled
+    tags:
+      - partner-server
+  - name: interpreter-server
+    version: 0.1.0
+    condition: interpreter-server.enabled
+    tags:
+      - interpreter-server

@@ -1,0 +1,39 @@
+############################################################
+# This file contains settings that apply to the dev 'blue' #
+# environment. It overrides defaults in the following      #
+# - env/dev.common.yaml                                    #
+# - vineya/values.yaml                                     #
+############################################################
+
+##################
+# Global Setting #
+##################
+global:
+  color: blue
+
+#####################
+# Lighthouse Server #
+#####################
+lighthouse-server:
+
+  # Docker Image/Tag
+  image:
+    tag: develop-f231aca175105c9addb0e47ed9ac725b77c089fd
+
+##################
+# Partner Server #
+##################
+partner-server:
+
+  # Docker Image/Tag
+  image:
+    tag: develop-f407c71ff48338ab361088cdd0c725ba63588a62
+
+######################
+# Interpreter Server #
+######################
+interpreter-server:
+
+  # Docker Image/Tag
+  image:
+    tag: feature_VPP-4197-51f7a8475368ae887e74f687971f6b34b1a77d48

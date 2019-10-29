@@ -1,0 +1,44 @@
+ingress:
+  enabled: true
+  target: blue
+  domain: govineya-dev.com
+  annotations:
+    certmanager.k8s.io/issuer: letsencrypt-prod
+  partnerHosts: &partnerHosts
+    - partner-alpha
+    - partner-beta
+    - csdhq
+partnerWebIngress:
+  enabled: true
+  target: blue
+  domain: govineya-dev.com
+  annotations:
+    certmanager.k8s.io/issuer: letsencrypt-prod
+  partnerHosts:
+    *partnerHosts
+
+nginx-ingress:
+  enabled: true
+  controller:
+    service:
+      annotations:
+        dns.alpha.kubernetes.io/external: |
+          grafana.govineya-dev.com,
+          lighthouse.govineya-dev.com,
+          lighthouse.blue.govineya-dev.com,
+          lighthouse.green.govineya-dev.com,
+          interpreter.govineya-dev.com,
+          interpreter.blue.govineya-dev.com,
+          interpreter.green.govineya-dev.com,
+          partner.govineya-dev.com,
+          partner.blue.govineya-dev.com,
+          partner.green.govineya-dev.com,
+          csdhq.govineya-dev.com,
+          csdhq.blue.govineya-dev.com,
+          csdhq.green.govineya-dev.com,
+          partner-alpha.govineya-dev.com,
+          partner-alpha.blue.govineya-dev.com,
+          partner-alpha.green.govineya-dev.com,
+          partner-beta.govineya-dev.com,
+          partner-beta.blue.govineya-dev.com,
+          partner-beta.green.govineya-dev.com

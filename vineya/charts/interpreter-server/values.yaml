@@ -1,0 +1,80 @@
+# Default values for interpreter-server.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  domain: interpreter.local
+
+image:
+  repository: interpreter-server
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  name: interpreter
+  type: NodePort
+  port: 4000
+  jobWebPort: 9000
+  partnerWebPort: 9001
+
+ingress:
+  enabled: true
+  path: /
+  hosts:
+    - interpreter
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    ingress.kubernetes.io/rewrite-target: /
+    certmanager.k8s.io/issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: 25m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: 180s
+    nginx.ingress.kubernetes.io/server-snippet: |
+      keepalive_timeout 180s;
+
+      add_header 'Access-Control-Allow-Origin' '$http_origin';
+      add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+      add_header 'Access-Control-Allow-Headers' 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Accept,Authorization';
+
+      if ($request_method = 'OPTIONS') {
+          return 204;
+      }
+
+partnerWebIngress:
+  nameOverride: partner-web
+  enabled: true
+  path: /api/v2/interpreter-connections
+  hosts: []
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    certmanager.k8s.io/issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: 25m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: 180s
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      set $forwarded_url $scheme://$host/api/v2/interpreter-connections;
+
+      rewrite ^/api/v2/interpreter-connections(.*)$ /internal/interpreter-connections$1 break;
+
+      proxy_set_header X-Forwarded-Url $forwarded_url;
+
+healthCheck: {}
+
+replicas: 1
+
+resources: {}
+
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

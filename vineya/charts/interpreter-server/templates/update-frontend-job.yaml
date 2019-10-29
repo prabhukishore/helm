@@ -1,0 +1,25 @@
+{{- if .Values.jobs.fetchFrontend -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "interpreter-server.fullname" . }}-fetch-frontend
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      name: {{ template "interpreter-server.name" . }}-fetch-frontend
+      labels:
+        app: {{ template "interpreter-server.name" . }}-fetch-frontend
+        release: {{ .Release.Name }}
+        rabbitmq-client: "true"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: {{ .Chart.Name }}-fetch-frontend
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          args: ["sh", "-c", "set -x && sleep 5 && curl -v -X \"POST\" \"http://{{ template "interpreter-server.fullname" . }}:$PORT/make/ember/current$(if [ ! -z \"$INTERPRETER_DEPLOY_TOKEN\" ]; then echo \"?secret=$INTERPRETER_DEPLOY_TOKEN\"; fi )\" -H \"Accept: text/html\""]
+          {{ include "interpreter-server.env" . | indent 10 }}
+{{- end -}}

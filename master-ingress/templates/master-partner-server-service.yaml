@@ -1,0 +1,20 @@
+{{- $target := .Values.ingress.target -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: master-partner-server
+  labels:
+    app: {{ template "master-ingress.name" . }}
+    chart: {{ template "master-ingress.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: partner-server-web
+    release: vineya-{{ $target }}

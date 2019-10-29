@@ -1,0 +1,39 @@
+###############################################################
+# This file contains settings that apply to the stage 'green' #
+# environment. It overrides defaults in the following         #
+# - env/stage.common.yaml                                     #
+# - vineya/values.yaml                                        #
+###############################################################
+
+##################
+# Global Setting #
+##################
+global:
+  color: green
+
+#####################
+# Lighthouse Server #
+#####################
+lighthouse-server:
+
+  # Docker Image/Tag
+  image:
+    tag: hotfix_v2.16.1-cbef20af0a925d8882d639bbde468ca8359e9c76
+
+##################
+# Partner Server #
+##################
+partner-server:
+
+  # Docker Image/Tag
+  image:
+    tag: hotfix_v2.16.1-5e8701dc637c65ad09628c3bbd1f72b19b1e8b78
+
+######################
+# Interpreter Server #
+######################
+interpreter-server:
+
+  # Docker Image/Tag
+  image:
+    tag: hotfix_v2.16.1-680cb794b1f1b5cdc286d1f2b38dedd93dadd5bb

@@ -1,0 +1,7 @@
+dependencies:
+  - name: cert-manager
+    version: 0.3.4
+    repository: https://kubernetes-charts.storage.googleapis.com/
+    condition: cert-manager.enabled
+    tags:
+      - cert-manager

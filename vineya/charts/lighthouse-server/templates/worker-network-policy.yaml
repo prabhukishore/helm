@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ template "lighthouse-server.fullname" . }}-worker
+  labels:
+    app: {{ template "lighthouse-server.fullname" . }}
+    chart: {{ template "lighthouse-server.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  podSelector:
+    matchLabels:
+      release: {{ .Release.Name }}
+      lighthouse-worker: "true"
+  ingress:
+    - ports:
+      - port: 9292

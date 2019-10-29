@@ -1,0 +1,35 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "kitt.fullname" . }}
+  labels:
+    app: {{ template "kitt.name" . }}
+    chart: {{ template "kitt.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "kitt.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "kitt.name" . }}
+        release: {{ .Release.Name }}
+      annotations:
+        iam.amazonaws.com/role: k8s-ecr-docker-auth-role
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: EJSON_ENV
+              value: {{ .Values.ejsonEnv }}
+            - name: EJSON_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "kitt.name" . }}
+                  key: EJSON_PRIVATE_KEY

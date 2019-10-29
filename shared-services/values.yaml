@@ -1,0 +1,286 @@
+prometheus:
+  enabled: true
+
+  rbac:
+    create: false
+
+  serviceAccounts:
+    server:
+      create: false
+    pushgateway:
+      create: false
+    nodeExporter:
+      create: false
+    alertmanager:
+      create: false
+    kubeStateMetrics:
+      create: false
+
+  alertmanager:
+    enabled: true
+
+  alertmanagerFiles:
+    alertmanager.yml:
+      global:
+        slack_api_url: 'https://hooks.slack.com/services/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'
+
+      route:
+        group_by: ['alertname', 'cluster', 'service']
+        group_wait: 30s
+        group_interval: 2m
+        repeat_interval: 5m
+        receiver: default
+        routes:
+          - match:
+              severity: slack
+            receiver: default
+
+      receivers:
+        - name: default
+          slack_configs:
+            - channel: '#dev-monitoring'
+              send_resolved: true
+              title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }} : {{ .Alerts.Firing | len }}{{ end }}] - {{ range .Alerts }}{{ .Annotations.summary }} | {{ end }}'
+              text: "<!channel> \n{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
+
+    route:
+      group_wait: 10s
+      group_interval: 5m
+      receiver: default-receiver
+      repeat_interval: 3h
+
+  pushgateway:
+    enabled: false
+
+  serverFiles:
+    alerts:
+      groups:
+        - name: Elasticache
+          rules:
+          - alert: Elasticache - Low Memory
+            expr: aws_elasticache_freeable_memory_minimum < 100000000
+            for: 1m
+            labels:
+              severity: slack
+              service: elasticache
+            annotations:
+              summary: "{{ $labels.cache_cluster_id }} - Low Memory"
+          - alert: Elasticache - High CPU
+            expr: aws_elasticache_cpuutilization_maximum > 90
+            for: 1m
+            labels:
+              severity: slack
+              service: elasticache
+            annotations:
+              summary: "{{ $labels.cache_cluster_id }} - High CPU"
+        - name: Elastic Search
+          rules:
+          - alert: Elastic Search - High CPU
+            expr: aws_es_cpuutilization_maximum > 90
+            for: 1m
+            labels:
+              severity: slack
+              service: elasticsearch
+            annotations:
+              summary: "{{ $labels.domain_name }} - High CPU"
+          - alert: Elastic Search - Low Memory
+            expr: aws_es_free_storage_space_minimum < 1024
+            for: 1m
+            labels:
+              severity: slack
+              service: elasticsearch
+            annotations:
+              summary: "{{ $labels.domain_name }} - Low Memory"
+          - alert: Elastic Search - High JVM Heap Memory Pressure
+            expr: aws_es_jvmmemory_pressure_maximum > 90
+            for: 1m
+            labels:
+              severity: slack
+              service: elasticsearch
+            annotations:
+              summary: "{{ $labels.domain_name }} - High JVM Heap Memory Pressure"
+        - name: RDS
+          rules:
+          - alert: RDS - High Connection Count
+            expr: aws_rds_database_connections_maximum > 230
+            for: 1m
+            labels:
+              severity: slack
+              service: rds
+            annotations:
+              summary: "{{ $labels.dbinstance_identifier }} - High Connection Count"
+          - alert: RDS - Low Memory
+            expr: aws_rds_freeable_memory_minimum < 100000000
+            for: 1m
+            labels:
+              severity: slack
+              service: rds
+            annotations:
+              summary: "{{ $labels.dbinstance_identifier }} - Low Memory"
+          - alert:  RDS - High CPU
+            expr: aws_rds_cpuutilization_maximum > 90
+            for: 1m
+            labels:
+              severity: slack
+              service: rds
+            annotations:
+              summary: "{{ $labels.dbinstance_identifier }} - High CPU"
+        - name: Nodes
+          rules:
+          - alert: Nodes - Low Memory
+            expr: node_memory_MemFree < 100000000
+            for: 1m
+            labels:
+              severity: slack
+              service: ec2
+            annotations:
+              summary: "{{ $labels.instance }} - Low Memory"
+          - alert: Nodes - High CPU
+            expr: aws_ec2_cpuutilization_maximum > 90
+            for: 1m
+            labels:
+              severity: slack
+              service: ec2
+            annotations:
+              summary: "{{ $labels.instance }} - High CPU"
+
+prometheus-cloudwatch-exporter:
+  enabled: true
+  aws:
+    role: k8s-cloudwatch-role
+  serviceAccount:
+    create: false
+  rbac:
+    create: false
+  service:
+    annotations:
+      prometheus.io/scrape: 'true'
+  config: |-
+    region: us-east-1
+    metrics:
+      - aws_namespace: AWS/EC2
+        aws_dimensions:
+          - InstanceId
+        aws_metric_name: CPUUtilization
+      - aws_namespace: AWS/EC2
+        aws_dimensions:
+          - InstanceId
+        aws_metric_name: CPUCreditBalance
+        aws_statistics:
+          - Minimum
+      - aws_namespace: AWS/EBS
+        aws_dimensions:
+          - VolumeId
+        aws_metric_name: BurstBalance
+      - aws_namespace: AWS/EBS
+        aws_dimensions:
+          - VolumeId
+        aws_metric_name: VolumeReadOps
+      - aws_namespace: AWS/EBS
+        aws_dimensions:
+          - VolumeId
+        aws_metric_name: VolumeWriteOps
+      - aws_namespace: AWS/ElastiCache
+        aws_dimensions:
+          - CacheClusterId
+          - CacheNodeId
+        aws_metric_name: CPUUtilization
+      - aws_namespace: AWS/ElastiCache
+        aws_dimensions:
+          - CacheClusterId
+          - CacheNodeId
+        aws_metric_name: FreeableMemory
+      - aws_namespace: AWS/ElastiCache
+        aws_dimensions:
+          - CacheClusterId
+          - CacheNodeId
+        aws_metric_name: Evictions
+      - aws_namespace: AWS/S3
+        aws_dimensions:
+          - BucketName
+          - StorageType
+        aws_metric_name: BucketSizeBytes
+        range_seconds: 86400
+      - aws_namespace: AWS/ES
+        aws_dimensions:
+          - ClientId
+          - DomainName
+        aws_metric_name: CPUUtilization
+        aws_statistics:
+          - Maximum
+          - Average
+      - aws_namespace: AWS/ES
+        aws_dimensions:
+          - ClientId
+          - DomainName
+        aws_metric_name: FreeStorageSpace
+        aws_statistics:
+          - Minimum
+      - aws_namespace: AWS/ES
+        aws_dimensions:
+          - ClientId
+          - DomainName
+        aws_metric_name: JVMMemoryPressure
+        aws_statistics:
+          - Maximum
+      - aws_namespace: AWS/RDS
+        aws_dimensions:
+          - DBInstanceIdentifier
+        aws_metric_name: CPUUtilization
+        aws_statistics:
+          - Maximum
+          - Average
+      - aws_namespace: AWS/RDS
+        aws_dimensions:
+          - DBInstanceIdentifier
+        aws_metric_name: CPUCreditBalance
+        aws_statistics:
+          - Minimum
+      - aws_namespace: AWS/RDS
+        aws_dimensions:
+          - DBInstanceIdentifier
+        aws_metric_name: DatabaseConnections
+        aws_statistics:
+          - Maximum
+          - Average
+      - aws_namespace: AWS/RDS
+        aws_dimensions:
+          - DBInstanceIdentifier
+        aws_metric_name: FreeableMemory
+        aws_statistics:
+          - Minimum
+
+grafana:
+  enabled: true
+  rbac:
+    create: false
+  serviceAccount:
+    create: false
+  sidecar:
+    datasources:
+      enabled: true
+    dashboards:
+      enabled: true
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      ingress.kubernetes.io/rewrite-target: /
+    hosts:
+      - grafana.govineya-dev.com
+
+kube2iam:
+  enabled: true
+  extraArgs:
+    auto-discover-base-arn: true
+  host:
+    iptables: true
+    interface: weave
+
+fluentd-cloudwatch:
+  # Override image since the default image and most other images suffer from this:
+  # https://github.com/fluent/fluentd-kubernetes-daemonset/issues/164
+  image:
+    repository: fluent/fluentd-kubernetes-daemonset
+    tag: v1.2.2-debian-cloudwatch
+  awsRole: k8s-cloudwatch-role

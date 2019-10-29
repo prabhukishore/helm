@@ -1,0 +1,39 @@
+#############################################################
+# This file contains settings that apply to the prod 'blue' #
+# environment. It overrides defaults in the following       #
+# - env/prod.common.yaml                                    #
+# - vineya/values.yaml                                      #
+#############################################################
+
+##################
+# Global Setting #
+##################
+global:
+  color: blue
+
+#####################
+# Lighthouse Server #
+#####################
+lighthouse-server:
+
+  # Docker Image/Tag
+  image:
+    tag: v2.16.1
+
+##################
+# Partner Server #
+##################
+partner-server:
+
+  # Docker Image/Tag
+  image:
+    tag: v2.16.1
+
+######################
+# Interpreter Server #
+######################
+interpreter-server:
+
+  # Docker Image/Tag
+  image:
+    tag: v2.16.1

@@ -1,0 +1,65 @@
+# Default values for lighthouse-server.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  repository: lighthouse-server
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  name: lighthouse
+  type: NodePort
+  port: 3000
+
+ingress:
+  enabled: true
+  path: /
+  hosts:
+    - lighthouse
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    ingress.kubernetes.io/rewrite-target: /
+    certmanager.k8s.io/issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: 25m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: 180s
+    nginx.ingress.kubernetes.io/server-snippet: |
+      keepalive_timeout 180s;
+
+      add_header 'Access-Control-Allow-Origin' '$http_origin';
+      add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+      add_header 'Access-Control-Allow-Headers' 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Accept,Authorization';
+
+      if ($request_method = 'OPTIONS') {
+          return 204;
+      }
+
+healthCheck:
+  enabled: true
+  path: "/health_check/site"
+  headerName: "Honeybadger-Token"
+  secret: "PzxfvC1lc0Lty7ERL3PCFvLCZwZpjvEypdLKuIAtrvME2R4PoMrYNmT8z7tQ4R9MH"
+
+replicas:
+  web: 1
+  sidekiq: 1
+  rpc: 1
+
+resources: {}
+
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
